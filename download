@@ -1,0 +1,4 @@
+push-backend/node_modules/
+push-backend/.env
+push-backend/db.json
+.DS_Store

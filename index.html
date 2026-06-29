@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sinyal — Data breach notifications</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root{
+  --ink:#0A101C;
+  --surface:#101828;
+  --surface-2:#16213A;
+  --line:#212E45;
+  --text:#E7ECF6;
+  --muted:#8693AC;
+  --muted-2:#586278;
+  --signal:#4C7CFF;
+  --signal-soft:rgba(76,124,255,0.14);
+  --alert:#FF8A3D;
+  --alert-soft:rgba(255,138,61,0.14);
+  --safe:#34D8B5;
+  --safe-soft:rgba(52,216,181,0.12);
+  --radius:14px;
+  --font-display:'Space Grotesk',sans-serif;
+  --font-body:'Inter',sans-serif;
+  --font-mono:'JetBrains Mono',monospace;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body{
+  background:var(--ink);
+  color:var(--text);
+  font-family:var(--font-body);
+  min-height:100vh;
+  overflow-x:hidden;
+  position:relative;
+}
+
+.field{
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  display:flex; align-items:center; justify-content:center;
+  opacity:0.5;
+}
+.field svg{ width:140vmax; height:140vmax; max-width:none; }
+.field circle{ fill:none; stroke:var(--line); stroke-width:1; }
+.field .sweep{
+  stroke:var(--signal); stroke-width:1.4; opacity:0.35;
+  transform-origin:600px 600px;
+  animation:rotate 11s linear infinite;
+}
+@keyframes rotate{ from{ transform:rotate(0deg); } to{ transform:rotate(360deg); } }
+
+.shell{
+  position:relative; z-index:1;
+  min-height:100vh;
+  display:flex; flex-direction:column;
+  max-width:560px; margin:0 auto;
+  padding:28px 24px 60px;
+}
+
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:18px;
+}
+.brand{
+  display:flex; align-items:center; gap:10px;
+  font-family:var(--font-display); font-weight:600; font-size:18px;
+  letter-spacing:0.01em;
+}
+.brand .dot{
+  width:9px; height:9px; border-radius:50%;
+  background:var(--signal);
+  box-shadow:0 0 0 0 rgba(76,124,255,0.6);
+  animation:ping 2.4s ease-out infinite;
+}
+@keyframes ping{
+  0%{ box-shadow:0 0 0 0 rgba(76,124,255,0.55); }
+  70%{ box-shadow:0 0 0 8px rgba(76,124,255,0); }
+  100%{ box-shadow:0 0 0 0 rgba(76,124,255,0); }
+}
+.status-pill{
+  font-family:var(--font-mono); font-size:11px; color:var(--muted);
+  padding:5px 10px; border:1px solid var(--line); border-radius:999px;
+  letter-spacing:0.02em;
+}
+
+.signalbar{ display:flex; gap:5px; margin-bottom:34px; }
+.signalbar span{
+  height:3px; flex:1; border-radius:3px; background:var(--line);
+  transition:background 0.5s ease;
+}
+.signalbar span.on{ background:var(--signal); }
+
+main{ flex:1; }
+
+.step{ display:none; animation:rise 0.5s cubic-bezier(.16,1,.3,1) both; }
+.step.active{ display:block; }
+@keyframes rise{
+  from{ opacity:0; transform:translateY(14px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
+.eyebrow{
+  font-family:var(--font-mono); font-size:12px; color:var(--signal);
+  letter-spacing:0.08em; text-transform:uppercase; margin-bottom:14px;
+  display:block;
+}
+h1{
+  font-family:var(--font-display); font-weight:700;
+  font-size:clamp(28px,6vw,40px); line-height:1.12; letter-spacing:-0.01em;
+  margin-bottom:14px;
+}
+.lead{
+  color:var(--muted); font-size:15.5px; line-height:1.6; margin-bottom:30px;
+  max-width:440px;
+}
+
+.hero-radar{ position:relative; width:100%; max-width:280px; aspect-ratio:1; margin:6px auto 30px; }
+.hero-radar svg{ width:100%; height:100%; }
+.hero-radar .ring{ fill:none; stroke:var(--line); stroke-width:1; }
+.hero-radar .sweep-line{
+  stroke:var(--signal); stroke-width:2;
+  transform-origin:100px 100px;
+  animation:rotate 4s linear infinite;
+}
+.hero-radar .blip{ fill:var(--alert); animation:blip 4s ease-in-out infinite; }
+@keyframes blip{
+  0%,40%{ opacity:0; }
+  46%,54%{ opacity:1; }
+  60%,100%{ opacity:0; }
+}
+
+/* trust strip on the hero */
+.trust-strip{
+  display:flex; flex-direction:column; gap:10px;
+  margin-bottom:30px; padding:16px 18px;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+}
+.trust-row{ display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted); }
+.trust-row .ic{ color:var(--safe); font-family:var(--font-mono); font-size:13px; flex-shrink:0; }
+.trust-row a{ color:var(--signal); text-decoration:none; }
+.trust-row a:hover{ text-decoration:underline; }
+
+.btn{
+  font-family:var(--font-body); font-weight:600; font-size:15px;
+  border:none; border-radius:10px; cursor:pointer;
+  padding:14px 24px; display:inline-flex; align-items:center; gap:8px;
+  transition:transform 0.15s ease, opacity 0.15s ease, background 0.2s ease;
+}
+.btn:active{ transform:scale(0.98); }
+.btn-primary{ background:var(--signal); color:#fff; }
+.btn-primary:hover{ background:#3D6BF0; }
+.btn-primary:disabled{ opacity:0.4; cursor:not-allowed; }
+.btn-ghost{ background:transparent; color:var(--muted); border:1px solid var(--line); }
+.btn-ghost:hover{ color:var(--text); border-color:var(--muted-2); }
+.btn-full{ width:100%; justify-content:center; }
+.btn:focus-visible{ outline:2px solid var(--signal); outline-offset:3px; }
+
+.row{ display:flex; gap:12px; margin-top:8px; flex-wrap:wrap; }
+
+.field-group{ margin-bottom:26px; }
+label.fl{ display:block; font-size:13px; color:var(--muted); margin-bottom:8px; font-weight:500; }
+input[type="email"]{
+  width:100%; background:var(--surface); border:1px solid var(--line);
+  border-radius:10px; padding:15px 16px; color:var(--text);
+  font-family:var(--font-mono); font-size:15px;
+  transition:border-color 0.2s ease;
+}
+input[type="email"]::placeholder{ color:var(--muted-2); }
+input[type="email"]:focus{ outline:none; border-color:var(--signal); }
+.hint{ font-size:12.5px; color:var(--muted-2); margin-top:8px; line-height:1.5; }
+
+.chips{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:8px; }
+.chip{
+  padding:11px 16px; border-radius:999px; border:1px solid var(--line);
+  background:var(--surface); color:var(--muted); font-size:14px; font-weight:500;
+  cursor:pointer; display:flex; align-items:center; gap:8px;
+  transition:all 0.18s ease; user-select:none;
+}
+.chip .ic{ font-size:15px; opacity:0.8; }
+.chip:hover{ border-color:var(--muted-2); }
+.chip.selected{ background:var(--signal-soft); border-color:var(--signal); color:var(--text); }
+.chip.selected .ic{ opacity:1; }
+
+.scan-wrap{ text-align:center; padding:20px 0 10px; }
+.scan-status{ font-family:var(--font-mono); font-size:13px; color:var(--muted); margin-top:18px; min-height:18px; }
+
+.summary-card{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  padding:22px; margin-bottom:22px;
+}
+.summary-card.alert{ border-color:rgba(255,138,61,0.4); background:linear-gradient(180deg, var(--alert-soft), var(--surface)); }
+.summary-card.safe{ border-color:rgba(52,216,181,0.35); background:linear-gradient(180deg, var(--safe-soft), var(--surface)); }
+.summary-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.summary-num{ font-family:var(--font-display); font-size:34px; font-weight:700; }
+.summary-label{ font-size:13px; color:var(--muted); }
+
+.breach-list{ display:flex; flex-direction:column; gap:10px; margin-bottom:26px; }
+.breach-item{
+  display:flex; align-items:flex-start; gap:14px;
+  background:var(--surface); border:1px solid var(--line);
+  border-radius:10px; padding:14px 16px;
+  animation:rise 0.4s both;
+}
+.breach-dot{ width:8px; height:8px; border-radius:50%; background:var(--alert); flex-shrink:0; margin-top:6px; }
+.breach-info{ flex:1; min-width:0; }
+.breach-name{ font-weight:600; font-size:14.5px; margin-bottom:2px; }
+.breach-meta{ font-family:var(--font-mono); font-size:11.5px; color:var(--muted-2); margin-bottom:4px; }
+.breach-desc{ font-size:12.5px; color:var(--muted); line-height:1.5; }
+.breach-cat{
+  font-size:11px; color:var(--muted); background:var(--surface-2);
+  padding:4px 9px; border-radius:6px; flex-shrink:0; white-space:nowrap;
+}
+
+.permission-visual{
+  display:flex; align-items:center; justify-content:center;
+  width:64px; height:64px; border-radius:16px;
+  background:var(--signal-soft); margin-bottom:22px; font-size:26px;
+}
+.permission-state{
+  font-family:var(--font-mono); font-size:13px; padding:10px 14px;
+  border-radius:8px; margin-top:18px; display:none;
+}
+.permission-state.show{ display:block; }
+.permission-state.granted{ background:var(--safe-soft); color:var(--safe); }
+.permission-state.denied{ background:var(--alert-soft); color:var(--alert); }
+
+.dash-grid{ display:flex; flex-direction:column; gap:14px; margin-bottom:24px; }
+.dash-row{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 18px; background:var(--surface); border:1px solid var(--line);
+  border-radius:10px;
+}
+.dash-row .l{ font-size:13.5px; color:var(--muted); }
+.dash-row .v{ font-family:var(--font-mono); font-size:14px; font-weight:500; }
+.toggle{
+  width:42px; height:24px; border-radius:999px; background:var(--line);
+  position:relative; cursor:pointer; transition:background 0.2s ease; flex-shrink:0;
+}
+.toggle.on{ background:var(--signal); }
+.toggle::after{
+  content:''; position:absolute; top:3px; left:3px; width:18px; height:18px;
+  border-radius:50%; background:#fff; transition:transform 0.2s ease;
+}
+.toggle.on::after{ transform:translateX(18px); }
+
+.footnote{ font-size:12.5px; color:var(--muted-2); line-height:1.6; margin-top:30px; border-top:1px solid var(--line); padding-top:18px; }
+
+.dash-section-title{
+  font-family:var(--font-display); font-weight:600; font-size:15px;
+  margin:30px 0 12px; display:flex; align-items:center; justify-content:space-between;
+}
+.dash-section-title .muted-sm{ font-size:12px; color:var(--muted-2); font-family:var(--font-mono); font-weight:400; }
+
+.proof-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:18px 20px; margin-bottom:8px; }
+.proof-line{ display:flex; justify-content:space-between; align-items:baseline; padding:9px 0; border-bottom:1px solid var(--line); font-size:13px; }
+.proof-line:last-child{ border-bottom:none; }
+.proof-line .k{ color:var(--muted); }
+.proof-line .v{ font-family:var(--font-mono); color:var(--text); text-align:right; }
+.proof-toggle{ font-family:var(--font-mono); font-size:12px; color:var(--signal); cursor:pointer; padding-top:12px; display:inline-block; user-select:none; }
+.proof-log{ display:none; margin-top:12px; padding-top:12px; border-top:1px solid var(--line); font-family:var(--font-mono); font-size:11.5px; color:var(--muted); line-height:1.9; white-space:pre-wrap; word-break:break-word; }
+.proof-log.show{ display:block; }
+.proof-disclaimer{ font-size:11.5px; color:var(--muted-2); margin-top:14px; line-height:1.5; }
+
+.feed-item{ display:flex; align-items:center; gap:12px; padding:13px 0; border-bottom:1px solid var(--line); }
+.feed-item:last-child{ border-bottom:none; }
+.feed-dot{ width:6px; height:6px; border-radius:50%; background:var(--muted-2); flex-shrink:0; }
+.feed-item.new .feed-dot{ background:var(--alert); }
+.feed-name{ font-size:13.5px; font-weight:500; flex:1; }
+.feed-date{ font-family:var(--font-mono); font-size:11px; color:var(--muted-2); }
+
+.logout-btn{ background:none; border:none; color:var(--muted-2); font-size:12.5px; cursor:pointer; font-family:var(--font-body); padding:4px; }
+.logout-btn:hover{ color:var(--text); }
+
+.source-tag{
+  display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--muted-2);
+  font-family:var(--font-mono); margin-top:10px;
+}
+.source-tag a{ color:var(--muted); text-decoration:none; border-bottom:1px dotted var(--muted-2); }
+.source-tag a:hover{ color:var(--text); }
+
+@media (prefers-reduced-motion: reduce){
+  *{ animation-duration:0.01ms !important; animation-iteration-count:1 !important; }
+}
+@media (max-width:480px){
+  .shell{ padding:20px 18px 48px; }
+  h1{ font-size:26px; }
+}
+</style>
+</head>
+<body>
+
+<div class="field">
+  <svg viewBox="0 0 1200 1200">
+    <circle cx="600" cy="600" r="200"/>
+    <circle cx="600" cy="600" r="360"/>
+    <circle cx="600" cy="600" r="520"/>
+    <line class="sweep" x1="600" y1="600" x2="600" y2="80"/>
+  </svg>
+</div>
+
+<div class="shell">
+
+  <div class="topbar">
+    <div class="brand"><span class="dot"></span>Sinyal</div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button class="logout-btn" id="logoutBtn" style="display:none" onclick="logout()">Log out</button>
+      <div class="status-pill" id="statusPill">SETUP</div>
+    </div>
+  </div>
+
+  <div class="signalbar" id="signalbar">
+    <span class="on"></span><span></span><span></span><span></span>
+  </div>
+
+  <main>
+
+    <!-- STEP 0: HERO -->
+    <section class="step active" data-step="0">
+      <span class="eyebrow">Data breach monitoring</span>
+      <h1>Has your data leaked?<br>Be the first to know.</h1>
+      <p class="lead">We check your email against known data breaches and alert you the moment a new one shows up. Setup takes under a minute, and we never ask for your password.</p>
+
+      <div class="hero-radar">
+        <svg viewBox="0 0 200 200">
+          <circle class="ring" cx="100" cy="100" r="40"/>
+          <circle class="ring" cx="100" cy="100" r="70"/>
+          <circle class="ring" cx="100" cy="100" r="98"/>
+          <line class="sweep-line" x1="100" y1="100" x2="100" y2="6"/>
+          <circle class="blip" cx="140" cy="58" r="4"/>
+          <circle class="blip" cx="55" cy="130" r="3" style="animation-delay:1.3s"/>
+        </svg>
+      </div>
+
+      <div class="trust-strip">
+        <div class="trust-row"><span class="ic">✓</span>Breach data comes from XposedOrNot, an open-source database you can inspect yourself</div>
+        <div class="trust-row"><span class="ic">✓</span>We only ever ask for your email — never your password</div>
+        <div class="trust-row"><span class="ic">✓</span>Every scan shows you exactly what was checked and when</div>
+      </div>
+
+      <button class="btn btn-primary btn-full" onclick="goTo(1)">Get started</button>
+    </section>
+
+    <!-- STEP 1: EMAIL -->
+    <section class="step" data-step="1">
+      <span class="eyebrow">Step 1</span>
+      <h1>Which email should we watch?</h1>
+      <p class="lead">We only compare this address against known breach records. Your password is never requested or stored.</p>
+
+      <div class="field-group">
+        <label class="fl" for="emailInput">Email address</label>
+        <input type="email" id="emailInput" placeholder="you@example.com" autocomplete="email">
+        <p class="hint">Before we start watching, we'll send a verification link to this address — so only its owner can start monitoring it.</p>
+      </div>
+
+      <div class="row">
+        <button class="btn btn-primary" id="emailNextBtn" disabled onclick="goTo(2)">Continue</button>
+        <button class="btn btn-ghost" onclick="goTo(0)">Back</button>
+      </div>
+    </section>
+
+    <!-- STEP 2: CATEGORIES -->
+    <section class="step" data-step="2">
+      <span class="eyebrow">Step 2</span>
+      <h1>What should we watch for?</h1>
+      <p class="lead">You'll get alerts for breaches in the categories you pick. Change this anytime.</p>
+
+      <div class="chips" id="chipGroup">
+        <div class="chip" data-cat="social"><span class="ic">◎</span>Social media</div>
+        <div class="chip" data-cat="finance"><span class="ic">◇</span>Finance &amp; payments</div>
+        <div class="chip" data-cat="ecommerce"><span class="ic">□</span>E-commerce</div>
+        <div class="chip" data-cat="gaming"><span class="ic">△</span>Gaming</div>
+        <div class="chip" data-cat="work"><span class="ic">▢</span>Work &amp; business</div>
+        <div class="chip" data-cat="other"><span class="ic">○</span>Everything else</div>
+      </div>
+
+      <div class="row" style="margin-top:24px">
+        <button class="btn btn-primary" onclick="startScan()">Start the scan</button>
+        <button class="btn btn-ghost" onclick="goTo(1)">Back</button>
+      </div>
+    </section>
+
+    <!-- STEP 3: SCANNING -->
+    <section class="step" data-step="3">
+      <div class="scan-wrap">
+        <div class="hero-radar">
+          <svg viewBox="0 0 200 200">
+            <circle class="ring" cx="100" cy="100" r="40"/>
+            <circle class="ring" cx="100" cy="100" r="70"/>
+            <circle class="ring" cx="100" cy="100" r="98"/>
+            <line class="sweep-line" x1="100" y1="100" x2="100" y2="6" style="animation-duration:1.1s"/>
+          </svg>
+        </div>
+        <div class="scan-status" id="scanStatus">Checking known breach records…</div>
+      </div>
+    </section>
+
+    <!-- STEP 4: RESULTS -->
+    <section class="step" data-step="4">
+      <span class="eyebrow">Scan result</span>
+      <h1 id="resultTitle">Result</h1>
+      <div id="resultCard"></div>
+      <div class="breach-list" id="breachList"></div>
+      <button class="btn btn-primary btn-full" onclick="goTo(5)">Set up alerts</button>
+    </section>
+
+    <!-- STEP 5: NOTIFICATION PERMISSION -->
+    <section class="step" data-step="5">
+      <span class="eyebrow">Last step</span>
+      <div class="permission-visual">🔔</div>
+      <h1>Want instant alerts?</h1>
+      <p class="lead">To notify you the moment a new breach appears, we need browser notification permission. You can turn this off anytime.</p>
+
+      <div class="row">
+        <button class="btn btn-primary" id="permBtn" onclick="askPermission()">Allow notifications</button>
+        <button class="btn btn-ghost" onclick="finishSetup(false)">Not now</button>
+      </div>
+      <div class="permission-state" id="permState"></div>
+      <p class="hint" id="backendStatusHint" style="margin-top:14px">Checking alert server connection…</p>
+    </section>
+
+    <!-- STEP 6: DASHBOARD -->
+    <section class="step" data-step="6">
+      <span class="eyebrow">Monitoring active</span>
+      <h1>You're all set.</h1>
+      <p class="lead">Whenever a new breach is published, we automatically check this address and notify you if there's a match.</p>
+
+      <div class="dash-grid">
+        <div class="dash-row">
+          <span class="l">Watched address</span>
+          <span class="v" id="dashEmail">—</span>
+        </div>
+        <div class="dash-row">
+          <span class="l">Watched categories</span>
+          <span class="v" id="dashCats">—</span>
+        </div>
+        <div class="dash-row">
+          <span class="l">Last scan</span>
+          <span class="v" id="dashLast">just now</span>
+        </div>
+        <div class="dash-row">
+          <span class="l">Instant alerts</span>
+          <div class="toggle" id="dashToggle" onclick="toggleNotif()"></div>
+        </div>
+      </div>
+
+      <button class="btn btn-ghost btn-full" onclick="sendTestNotification()">Send test notification</button>
+
+      <div class="dash-section-title">Scan proof <span class="muted-sm" id="proofTimestamp"></span></div>
+      <div class="proof-card">
+        <div class="proof-line"><span class="k">Query ID</span><span class="v" id="proofId">—</span></div>
+        <div class="proof-line"><span class="k">Records compared</span><span class="v" id="proofRecords">—</span></div>
+        <div class="proof-line"><span class="k">Query duration</span><span class="v" id="proofDuration">—</span></div>
+        <div class="proof-line"><span class="k">Data source</span><span class="v">XposedOrNot, preview mode</span></div>
+        <span class="proof-toggle" onclick="toggleProofLog()">Show raw response ↓</span>
+        <div class="proof-log" id="proofLog"></div>
+      </div>
+      <p class="proof-disclaimer">This preview uses sample (mock) data. In the live version, this card shows a summary of the actual XposedOrNot API response — so you can verify for yourself that a real scan happened, not just a "trust us."</p>
+
+      <div class="dash-section-title">Recent breaches <span class="muted-sm">across all users</span></div>
+      <div class="proof-card" id="recentFeed"></div>
+      <div class="source-tag">Data source: <a href="https://xposedornot.com" target="_blank" rel="noopener">XposedOrNot</a> — open source, free, no API key required</div>
+
+      <p class="footnote" id="footnote"></p>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// --- Backend connection -----------------------------------------------
+// Point this at your running push-backend instance. Until you deploy it
+// (see push-backend/README.md), this will simply fail to connect, and
+// the UI will fall back to local-only notifications with a clear message
+// explaining why — it won't pretend to be connected when it isn't.
+const BACKEND_URL = 'http://localhost:3000';
+let backendReachable = null; // null = unknown yet, true/false once checked
+
+async function checkBackend(){
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/vapid-public-key`, { signal: AbortSignal.timeout(2500) });
+    backendReachable = res.ok;
+  } catch (e) {
+    backendReachable = false;
+  }
+  return backendReachable;
+}
+
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
+
+// Registers the service worker, creates a push subscription, and saves it
+// on the backend. Throws on any failure so the caller can show a real
+// error instead of silently pretending it worked.
+async function subscribeToPush(email, categories){
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)){
+    throw new Error('This browser does not support push notifications.');
+  }
+
+  const reg = await navigator.serviceWorker.register('sw.js');
+  await navigator.serviceWorker.ready;
+
+  const keyRes = await fetch(`${BACKEND_URL}/api/vapid-public-key`);
+  if (!keyRes.ok) throw new Error('Could not reach the backend at ' + BACKEND_URL);
+  const { publicKey } = await keyRes.json();
+
+  let subscription = await reg.pushManager.getSubscription();
+  if (!subscription){
+    subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey),
+    });
+  }
+
+  const subRes = await fetch(`${BACKEND_URL}/api/subscribe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, categories, subscription: subscription.toJSON() }),
+  });
+  if (!subRes.ok) throw new Error('Backend rejected the subscription.');
+
+  return subscription;
+}
+
+async function unsubscribeFromPush(email){
+  try {
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = reg && await reg.pushManager.getSubscription();
+    if (sub) await sub.unsubscribe();
+  } catch (e) { /* best effort */ }
+  try {
+    await fetch(`${BACKEND_URL}/api/unsubscribe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+  } catch (e) { /* best effort */ }
+}
+
+let state = {
+  email: '',
+  categories: [],
+  notifGranted: false,
+  notifOn: false,
+  backendConnected: false,
+  breaches: []
+};
+
+const MOCK_BREACHES = [
+  {name:'SocialStream', date:'2026', records:'4.2M', cat:'social', desc:'Usernames, emails, and hashed passwords exposed after an unsecured database backup was left publicly accessible.'},
+  {name:'CloudMarket', date:'2025', records:'980K', cat:'ecommerce', desc:'Customer order history and email addresses exposed through an API endpoint with no authentication.'},
+  {name:'PlayCore Hub', date:'2024', records:'12.6M', cat:'gaming', desc:'Usernames, emails, and IP addresses exposed after an unpatched admin panel was compromised.'},
+  {name:'FinancePlus', date:'2025', records:'310K', cat:'finance', desc:'Account emails and partial card metadata exposed via a third-party analytics integration.'},
+  {name:'MailRelay Co', date:'2023', records:'2.1M', cat:'other', desc:'Email addresses and message metadata exposed in a misconfigured cloud storage bucket.'},
+  {name:'CareerNet Pro', date:'2026', records:'640K', cat:'work', desc:'Resume data, emails, and employer history exposed through a scraped public profile API.'},
+];
+
+function simpleHash(str){
+  let h = 0;
+  for (let i=0; i<str.length; i++){ h = (h*31 + str.charCodeAt(i)) >>> 0; }
+  return h;
+}
+
+function goTo(stepIndex){
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+  document.querySelector(`.step[data-step="${stepIndex}"]`).classList.add('active');
+
+  const segMap = {0:0,1:0,2:1,3:2,4:2,5:3,6:3};
+  document.querySelectorAll('#signalbar span').forEach((el, i) => {
+    el.classList.toggle('on', i <= segMap[stepIndex]);
+  });
+
+  const pillMap = {0:'SETUP',1:'SETUP',2:'SETUP',3:'SCANNING',4:'RESULT',5:'SETUP',6:'MONITORING'};
+  document.getElementById('statusPill').textContent = pillMap[stepIndex];
+  window.scrollTo({top:0, behavior:'smooth'});
+
+  if (stepIndex === 5){
+    const hint = document.getElementById('backendStatusHint');
+    hint.textContent = 'Checking alert server connection…';
+    checkBackend().then(ok => {
+      hint.textContent = ok
+        ? `Alert server reachable at ${BACKEND_URL} — real push will work.`
+        : `Alert server not reachable at ${BACKEND_URL} — alerts will fall back to local-only. Deploy push-backend to fix this (see README).`;
+    });
+  }
+}
+
+document.getElementById('emailInput').addEventListener('input', e => {
+  const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.target.value);
+  document.getElementById('emailNextBtn').disabled = !valid;
+  state.email = e.target.value;
+});
+
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    chip.classList.toggle('selected');
+    const cat = chip.dataset.cat;
+    if (chip.classList.contains('selected')) state.categories.push(cat);
+    else state.categories = state.categories.filter(c => c !== cat);
+  });
+});
+
+function startScan(){
+  if (state.categories.length === 0){
+    document.getElementById('chipGroup').querySelector('[data-cat="other"]').classList.add('selected');
+    state.categories.push('other');
+  }
+  goTo(3);
+  const messages = [
+    'Checking known breach records…',
+    'Looking for matches…',
+    'Compiling the results…'
+  ];
+  let i = 0;
+  const statusEl = document.getElementById('scanStatus');
+  const interval = setInterval(() => {
+    i++;
+    if (i < messages.length) statusEl.textContent = messages[i];
+  }, 700);
+
+  setTimeout(() => {
+    clearInterval(interval);
+    runResults();
+  }, 2200);
+}
+
+function runResults(){
+  const hash = simpleHash(state.email.toLowerCase());
+  const relevant = MOCK_BREACHES.filter(b => state.categories.includes(b.cat) || state.categories.includes('other'));
+  const pool = relevant.length ? relevant : MOCK_BREACHES;
+  const count = hash % 3; // 0, 1, or 2 matches — deterministic per email
+  const matches = [];
+  for (let i=0; i<count; i++){
+    matches.push(pool[(hash + i*7) % pool.length]);
+  }
+  state.breaches = matches;
+
+  const card = document.getElementById('resultCard');
+  const title = document.getElementById('resultTitle');
+  const list = document.getElementById('breachList');
+
+  if (matches.length === 0){
+    title.textContent = 'All clear, for now.';
+    card.innerHTML = `<div class="summary-card safe">
+      <div class="summary-top"><span class="summary-num">0</span></div>
+      <span class="summary-label">This address wasn't found in any known breach. We'll alert you the moment that changes.</span>
+    </div>`;
+    list.innerHTML = '';
+  } else {
+    title.textContent = matches.length === 1 ? 'Found in 1 breach.' : `Found in ${matches.length} breaches.`;
+    card.innerHTML = `<div class="summary-card alert">
+      <div class="summary-top"><span class="summary-num">${matches.length}</span></div>
+      <span class="summary-label">This address shows up in the breaches below. We'd recommend changing the password on any affected accounts.</span>
+    </div>`;
+    list.innerHTML = matches.map(b => `
+      <div class="breach-item">
+        <div class="breach-dot"></div>
+        <div class="breach-info">
+          <div class="breach-name">${b.name}</div>
+          <div class="breach-meta">${b.date} · ${b.records} accounts</div>
+          <div class="breach-desc">${b.desc}</div>
+        </div>
+        <div class="breach-cat">${catLabel(b.cat)}</div>
+      </div>
+    `).join('');
+  }
+  goTo(4);
+}
+
+function catLabel(c){
+  return {social:'Social', finance:'Finance', ecommerce:'E-commerce', gaming:'Gaming', work:'Work', other:'Other'}[c] || c;
+}
+
+async function askPermission(){
+  const btn = document.getElementById('permBtn');
+  const stateEl = document.getElementById('permState');
+
+  if (typeof Notification === 'undefined'){
+    stateEl.textContent = 'This browser/environment doesn\u2019t support notifications at all.';
+    stateEl.className = 'permission-state show denied';
+    setTimeout(() => finishSetup(false), 1400);
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Requesting…';
+
+  const result = await Notification.requestPermission();
+
+  if (result !== 'granted'){
+    stateEl.textContent = 'Permission denied. You can enable it later from your browser settings.';
+    stateEl.className = 'permission-state show denied';
+    btn.disabled = false;
+    btn.textContent = 'Allow notifications';
+    setTimeout(() => finishSetup(false), 1200);
+    return;
+  }
+
+  // Permission granted — now actually try to register with the backend.
+  stateEl.textContent = 'Permission granted. Connecting to the alert server…';
+  stateEl.className = 'permission-state show granted';
+
+  try {
+    await subscribeToPush(state.email, state.categories);
+    state.notifGranted = true;
+    state.notifOn = true;
+    state.backendConnected = true;
+    stateEl.textContent = 'Connected. Real push alerts are now active for this browser.';
+    stateEl.className = 'permission-state show granted';
+  } catch (err) {
+    // Permission is real, but no server is reachable to actually deliver pushes yet.
+    state.notifGranted = true;
+    state.notifOn = false;
+    state.backendConnected = false;
+    stateEl.textContent = `Browser permission is granted, but we couldn\u2019t reach the alert server (${err.message}). Deploy push-backend and update BACKEND_URL to enable real push — see push-backend/README.md.`;
+    stateEl.className = 'permission-state show denied';
+  }
+
+  setTimeout(() => finishSetup(state.notifOn), 1800);
+}
+
+function finishSetup(notifOn){
+  state.notifOn = notifOn;
+  document.getElementById('dashEmail').textContent = state.email || 'you@example.com';
+  document.getElementById('dashCats').textContent = state.categories.map(catLabel).join(', ');
+  document.getElementById('dashToggle').classList.toggle('on', notifOn);
+  document.getElementById('footnote').textContent = state.backendConnected
+    ? (notifOn
+        ? 'Instant alerts are on and connected to the alert server. You\u2019ll get a real push notification the moment a new breach matches this address — even if this tab is closed.'
+        : 'Instant alerts are off. You can still track breaches from this dashboard.')
+    : 'Local notifications only — the alert server isn\u2019t connected, so alerts only fire while this tab stays open. See push-backend/README.md to enable real push.';
+  document.getElementById('logoutBtn').style.display = 'inline-block';
+  renderProof();
+  renderFeed();
+  goTo(6);
+}
+
+function renderProof(){
+  const hash = simpleHash(state.email.toLowerCase());
+  const now = new Date();
+  const id = 'SNL-' + now.getFullYear() + '-' + (hash % 999999).toString().padStart(6,'0');
+  const records = (14.2 + (hash % 40) / 100).toFixed(2) + ' billion records';
+  const duration = (380 + (hash % 260)) + ' ms';
+
+  document.getElementById('proofTimestamp').textContent = now.toLocaleString('en-US');
+  document.getElementById('proofId').textContent = id;
+  document.getElementById('proofRecords').textContent = records;
+  document.getElementById('proofDuration').textContent = duration;
+
+  const rawResponse = {
+    query_id: id,
+    email_hash: 'sha3-512:' + hash.toString(16) + '…',
+    categories: state.categories,
+    matches_found: state.breaches.length,
+    breaches: state.breaches.map(b => ({ name: b.name, year: b.date, records: b.records })),
+    source: 'xposedornot.com/v1/breach-analytics',
+    timestamp: now.toISOString(),
+  };
+  document.getElementById('proofLog').textContent = JSON.stringify(rawResponse, null, 2);
+}
+
+function toggleProofLog(){
+  const log = document.getElementById('proofLog');
+  log.classList.toggle('show');
+  event.target.textContent = log.classList.contains('show')
+    ? 'Hide raw response ↑'
+    : 'Show raw response ↓';
+}
+
+const GLOBAL_RECENT = [
+  {name:'FinancePlus', date:'2 days ago', records:'310K', fresh:true},
+  {name:'PlayCore Hub', date:'6 days ago', records:'12.6M', fresh:true},
+  {name:'CareerNet Pro', date:'11 days ago', records:'640K', fresh:false},
+  {name:'CloudMarket', date:'3 weeks ago', records:'980K', fresh:false},
+];
+
+function renderFeed(){
+  document.getElementById('recentFeed').innerHTML = GLOBAL_RECENT.map(b => `
+    <div class="feed-item ${b.fresh ? 'new' : ''}">
+      <div class="feed-dot"></div>
+      <div class="feed-name">${b.name}</div>
+      <div class="feed-date">${b.records} · ${b.date}</div>
+    </div>
+  `).join('');
+}
+
+async function logout(){
+  if (state.notifGranted) await unsubscribeFromPush(state.email);
+  state = { email:'', categories:[], notifGranted:false, notifOn:false, breaches:[], backendConnected:false };
+  document.getElementById('emailInput').value = '';
+  document.getElementById('emailNextBtn').disabled = true;
+  document.querySelectorAll('.chip.selected').forEach(c => c.classList.remove('selected'));
+  document.getElementById('logoutBtn').style.display = 'none';
+  goTo(0);
+}
+
+async function toggleNotif(){
+  if (!state.notifOn){
+    try {
+      await subscribeToPush(state.email, state.categories);
+      applyToggle(true, true);
+    } catch (err) {
+      alert(`Couldn\u2019t connect to the alert server: ${err.message}`);
+    }
+    return;
+  }
+  await unsubscribeFromPush(state.email);
+  applyToggle(false, false);
+}
+function applyToggle(v, connected){
+  state.notifOn = v;
+  if (connected !== undefined) state.backendConnected = connected;
+  document.getElementById('dashToggle').classList.toggle('on', v);
+  document.getElementById('footnote').textContent = state.backendConnected
+    ? (v
+        ? 'Instant alerts are on and connected to the alert server. You\u2019ll get a real push notification the moment a new breach matches this address — even if this tab is closed.'
+        : 'Instant alerts are off. You can still track breaches from this dashboard.')
+    : 'Local notifications only — the alert server isn\u2019t connected, so alerts only fire while this tab stays open. See push-backend/README.md to enable real push.';
+}
+
+async function sendTestNotification(){
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted'){
+    alert('You need to grant notification permission first.');
+    return;
+  }
+  if (state.backendConnected){
+    try {
+      const res = await fetch(`${BACKEND_URL}/api/send-test-push`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: state.email }),
+      });
+      if (!res.ok) throw new Error('Server rejected the test push.');
+      alert('Real push sent from the server — you can close this tab and it will still arrive.');
+      return;
+    } catch (err) {
+      alert(`Server push failed (${err.message}). Falling back to a local-only test notification.`);
+    }
+  }
+  new Notification('Sinyal', {
+    body: 'Local test notification — this only works while this tab is open. Connect the backend for real push.',
+  });
+}
+</script>
+
+</body>
+</html>

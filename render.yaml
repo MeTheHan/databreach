@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: sinyal-backend
+    runtime: node
+    rootDir: push-backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: CRON_SECRET
+        sync: false
