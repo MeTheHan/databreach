@@ -475,7 +475,7 @@ input[type="email"]:focus{ outline:none; border-color:var(--signal); }
 // (see push-backend/README.md), this will simply fail to connect, and
 // the UI will fall back to local-only notifications with a clear message
 // explaining why — it won't pretend to be connected when it isn't.
-const BACKEND_URL = 'http://localhost:3000';
+const BACKEND_URL = 'https://databreachchecker.onrender.com';
 let backendReachable = null; // null = unknown yet, true/false once checked
 
 async function checkBackend(){
