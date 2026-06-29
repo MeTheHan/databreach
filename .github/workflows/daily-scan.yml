@@ -1,0 +1,25 @@
+name: Daily breach scan
+
+# Render's free tier puts your backend to sleep after 15 minutes of no
+# traffic, which means its internal cron (node-cron) won't reliably fire.
+# This workflow calls the backend from GitHub instead — GitHub's own
+# scheduler isn't affected by Render sleeping, and the act of calling the
+# URL also wakes the backend up if it was asleep.
+
+on:
+  schedule:
+    - cron: '0 9 * * *'   # 09:00 UTC every day — edit if you want a different time
+  workflow_dispatch: {}     # lets you trigger it manually from the Actions tab
+
+jobs:
+  trigger-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call the backend's scan endpoint
+        run: |
+          curl -X POST "${{ secrets.BACKEND_URL }}/api/run-scan-now" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            --max-time 60 \
+            --retry 2 \
+            --retry-delay 10 \
+            --fail
